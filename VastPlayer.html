@@ -1,0 +1,201 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="css/icon.min.css">
+    <link rel="stylesheet" href="css/semantic.css">
+    <link rel="stylesheet" href="css/video-js.css">
+    <link rel="stylesheet" href="css/videojs.ads.css">
+    <link rel="stylesheet" href="css/videojs.ima.css">
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="dark-background">
+
+  <div class="ui container">
+
+    <div class="ui one item menu inverted massive">
+      <a class="item" href="?">
+        <h2 class="ui header inverted">VAST Creative Preview</h2>
+      </a>
+    </div>
+
+    <div class="ui grid">
+      <div class="row">
+
+        <div class="eight wide column">
+          <div class="ui form inverted">
+            <div class="ui icon message inverted black">
+              <i class="twitter icon blue"></i>
+              <div class="content">
+                <div class="header">
+                  Not working? - jaejun@twitter.com
+                </div>
+                <p class="version"></p>
+              </div>
+            </div>
+            <div class="required field">
+              <label>Paste VAST XML here</label>
+              <textarea id="vast-ad"></textarea>
+            </div>
+            <button id="play-button" class="ui primary button inverted" type="submit">Preview</button>
+          </div>
+        </div>
+
+        <div class="eight wide column">
+          <div class="ui tiny header inverted">Ad Player</div>
+          <div id="vast-video-wrapper"></div>
+          <div class="ui inverted form checkbox-repeat">
+            <div class="ui checkbox">
+              <input id="repeat-playback" type="checkbox">
+              <label>Repeat Playback</label>
+             </div>
+           </div>
+
+        </div>
+
+      </div> <!-- row 1 -->
+
+      <div class="row">
+        <div class="six wide column">
+          <div class="ui tiny header inverted">Ad Data</div>
+          <div class="ui black inverted segment msg-box">
+            <div class="ui divided divided list inverted relaxed">
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Ad System</div>
+                <span id="adData-system"></span>
+              </div>
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Id</div>
+                <span id="adData-id"></span>
+              </div>
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Duration</div>
+                <span id="adData-duration"></span>
+              </div>
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Skippable</div>
+                <span id="adData-skippable"></span>
+              </div>
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Title</div>
+                <span id="adData-title"></span>
+              </div>
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Number of Ads</div>
+                <span id="adData-number"></span>
+              </div>
+              <div class="item">
+                <div class="ui blue horizontal label ad-data-label">Content Type</div>
+                <span id="adData-contentType"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ten wide column">
+          <div class="ui tiny header inverted">Event Outputs</div>
+          <div class="ui black inverted segment">
+            <pre id="console-msg"></pre>
+          </div>
+        </div>
+      </div> <!-- row 2 -->
+
+      <div class="row">
+        <div class="sixteen wide column">
+          <div class="ui tiny header inverted">Click Through URL</div>
+            <div class="ui black inverted segment click-through-url-txt">
+              <a id="adData-ct"></a>
+            </div>
+          </div>
+        </div>
+      </div> <!-- row 3 -->
+  </div>
+
+  <script src="js/lib/jquery-3.1.1.min.js" type="text/javascript"></script>
+  <script src="js/lib/semantic.js" type="text/javascript"></script>
+
+  <script src="js/lib/video.js" type="text/javascript"></script>
+  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js" type="text/javascript"></script>
+  <script src="js/lib/videojs.ima.js" type="text/javascript"></script>
+  <script src="js/lib/videojs.ads.js" type="text/javascript"></script>
+
+  <script src="js/global.js"></script>
+  <script src="js/adHelper.js"></script>
+  <script src="js/adEventHandler.js"></script>
+
+  <script type="text/javascript">
+
+  $(document).ready(function() {
+    $(".version").html(VERSION);
+
+    adHelper.initScreen();
+
+    $("#play-button").click(function() {
+      var vastXml = $("#vast-ad").val().trim();
+
+      if(vastXml == "") {
+        alert("Please enter VAST Xml and try again!");
+        $("#vast-ad").focus();
+        return;
+      }
+
+      var adsManager;
+      var player = adHelper.initScreen();
+      var adRequestOptions = {
+        showCountdown: true,
+        adsResponse: vastXml
+      };
+
+      player.ima(adRequestOptions);
+
+      player.on('ads-loader', function(response) {
+        var adsLoader = response.adsLoader;
+        adsLoader.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR, adEventHandler.onAdError);
+      });
+
+      player.on('ads-manager', function(response) {
+        adsManager = response.adsManager;
+        adEventHandler.updateConsoleHtml("ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED");
+
+        adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.CLICK, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.IMPRESSION, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR, adEventHandler.onAdError);
+
+        adsManager.addEventListener(google.ima.AdEvent.Type.AD_METADATA, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.PAUSED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.RESUMED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.SKIPPED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.VOLUME_CHANGED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.VOLUME_MUTED, adEventHandler.onAdEvent);
+
+        adsManager.addEventListener(google.ima.AdEvent.Type.LOADED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.STARTED, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.FIRST_QUARTILE, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.MIDPOINT, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.THIRD_QUARTILE, adEventHandler.onAdEvent);
+        adsManager.addEventListener(google.ima.AdEvent.Type.COMPLETE, adEventHandler.onAdEvent);
+
+        adsManager.addEventListener(google.ima.AdEvent.Type.ALL_ADS_COMPLETED, function() {
+          adEventHandler.updateConsoleHtml("ima.AdEvent.Type.ALL_ADS_COMPLETED");
+          if($("#repeat-playback").is(":checked")) {
+            $("#play-button").trigger("click");
+          } else {
+            player.pause();
+          }
+          // player.dispose();
+          // adHelper.initScreen();
+        });
+
+        adsManager.addEventListener(google.ima.AdEvent.Type.AD_PROGRESS, function(event) {
+          var progress = event.getAdData();
+          currentPlayTime = progress.currentTime.toFixed(2);
+        });
+
+        player.play();
+      });
+
+    }); // click
+  }); // document ready
+
+  </script>
+  </body>
+</html>
